@@ -1,100 +1,85 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import pickle
 import time
-from streamlit_lottie import st_lottie
-import requests
 
-# Page Configuration
-st.set_page_config(page_title="Customer Predictor", page_icon="🎯", layout="centered")
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Salary Predictor", page_icon="💰", layout="centered")
 
-# Custom CSS for styling and animations
+# --- CUSTOM CSS FOR ANIMATIONS ---
 st.markdown("""
     <style>
-    .main {
-        background-color: #f5f7f9;
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .main-header {
+        font-size: 3rem;
+        font-weight: 700;
+        color: #1E88E5;
+        text-align: center;
+        animation: fadeIn 1.5s ease-out;
     }
     .stButton>button {
         width: 100%;
         border-radius: 20px;
-        height: 3em;
-        background-color: #FF4B4B;
-        color: white;
-        font-weight: bold;
-        transition: 0.3s;
+        transition: all 0.3s ease;
     }
     .stButton>button:hover {
-        background-color: #ff3333;
         transform: scale(1.02);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
     </style>
     """, unsafe_allow_html=True)
 
-# Helper function for animations
-def load_lottieurl(url):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-lottie_coding = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_fcfjwiyb.json")
-
-# Load the Model
+# --- LOAD MODEL ---
 @st.cache_resource
 def load_model():
-    with open('model (2).pkl', 'rb') as file:
+    with open('model.pkl', 'rb') as file:
         model = pickle.load(file)
     return model
 
-try:
-    model = load_model()
-except Exception as e:
-    st.error(f"Error loading model: {e}")
+model = load_model()
 
-# Header Section
-with st.container():
-    left_column, right_column = st.columns([2, 1])
-    with left_column:
-        st.title("🎯 Target Audience Predictor")
-        st.subheader("Predicting customer behavior using K-Nearest Neighbors")
-    with right_column:
-        st_lottie(lottie_coding, height=150, key="coding")
-
+# --- HEADER ---
+st.markdown('<h1 class="main-header">Experience-Based Predictor</h1>', unsafe_allow_html=True)
 st.write("---")
 
-# User Input Section
-st.write("### 👤 Enter Customer Details")
-col1, col2 = st.columns(2)
+# --- INPUT SECTION ---
+st.subheader("Enter Details")
+col1, col2 = st.columns([2, 1])
 
 with col1:
-    gender = st.selectbox("Gender", options=["Male", "Female"])
-    age = st.slider("Age", 18, 100, 30)
-
+    years_exp = st.number_input("Years of Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5)
+    
 with col2:
-    salary = st.number_input("Estimated Annual Salary ($)", min_value=0, value=50000, step=1000)
+    st.info("Input your total professional experience to see the predicted outcome.")
 
-# Pre-processing input for the model 
-# Based on the model metadata: 0 for Female, 1 for Male (typical encoding)
-gender_encoded = 1 if gender == "Male" else 0
-
-# Create DataFrame for prediction 
-input_data = pd.DataFrame([[gender_encoded, age, salary]], 
-                          columns=['Gender', 'Age', 'EstimatedSalary'])
-
-# Prediction Button
-if st.button("🚀 Run Prediction"):
-    with st.spinner('Calculating likelihood...'):
-        time.sleep(1.5)  # Aesthetic delay
-        prediction = model.predict(input_data)
+# --- PREDICTION LOGIC ---
+if st.button("Predict Result"):
+    with st.spinner('Calculating using SVR Model...'):
+        time.sleep(1) # Visual delay for effect
         
-        st.write("---")
-        if prediction[0] == 1:
-            st.balloons()
-            st.success("### ✅ Result: Likely to Purchase!")
-            st.write("This customer matches the profile of your typical buyers.")
-        else:
-            st.warning("### ❌ Result: Unlikely to Purchase")
-            st.write("This customer is less likely to engage with this specific offer.")
+        # Prepare data for model
+        features = np.array([[years_exp]])
+        prediction = model.predict(features)
+        
+        # Display Result
+        st.balloons()
+        st.success(f"### Prediction Complete!")
+        
+        # Using a nice metric display
+        st.metric(label="Predicted Value", value=f"{prediction[0]:,.2f}")
+        
+        # Data visualization
+        st.write("#### Insights")
+        chart_data = pd.DataFrame({
+            'Experience': [years_exp],
+            'Prediction': [prediction[0]]
+        })
+        st.bar_chart(chart_data)
 
-# Footer
-st.markdown("<br><hr><center>Powered by Scikit-Learn 1.6.1 & Streamlit</center>", unsafe_allow_html=True)
+# --- FOOTER ---
+st.write("---")
+st.caption("Model Engine: SVR (RBF Kernel) | Scikit-Learn v1.6.1")
